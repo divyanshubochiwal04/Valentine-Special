@@ -37,13 +37,9 @@ export function initUIAnimations(onIgnite) {
 
 export function showMemoryPopup(content, label) {
     const popup = document.getElementById('memory-popup');
-    const titleEl = document.getElementById('popup-title');
     const textEl = document.getElementById('memory-content');
 
     if (popup && textEl) {
-        if (titleEl) {
-            titleEl.innerText = label ? label.toUpperCase() : "A MEMORY FRAGMENT";
-        }
         textEl.innerHTML = `"${content}"`;
 
         popup.classList.remove('hidden');
