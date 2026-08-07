@@ -32,3 +32,7 @@ Desktop.ini
 # Application logs
 *.log
 logs/
+
+# Agent customization configurations
+.agents/
+
