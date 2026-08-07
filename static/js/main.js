@@ -6,6 +6,7 @@ import {
     camera, 
     renderer, 
     composer, 
+    bloomPass,
     initScene, 
     updateCameraOffsets 
 } from './scene.js';

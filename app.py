@@ -147,6 +147,14 @@ def create_app():
     def server_error(e):
         return jsonify(error="Internal Server Error", message="An unexpected error occurred in the cosmos"), 500
 
+    @app.after_request
+    def add_header(r):
+        r.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        r.headers["Pragma"] = "no-cache"
+        r.headers["Expires"] = "0"
+        r.headers['Cache-Control'] = 'public, max-age=0'
+        return r
+
     return app
 
 # Expose global app object for WSGI servers like Gunicorn
