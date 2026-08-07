@@ -231,18 +231,20 @@ function initUniverseScene(userName) {
     scene.userData.phase = 'universe';
     scene.userData.memoryStars = memoryStars;
 
-    // Reset scrolling page dimensions
-    document.body.style.overflowY = 'auto';
-    document.body.style.height = `${Config.TOTAL_SCROLL_HEIGHT}px`;
+    // 1. Lock scrolling during Big Bang intro transition
+    document.body.style.overflowY = 'hidden';
     document.getElementById('story-container').classList.remove('hidden');
 
-    // 1. Spline Curve Setup
+    // 2. Setup Camera at the zoomed-in center of the void (0, 0, 0.1)
+    camera.position.set(0, 0, 0.1);
+
+    // 3. Spline Curve Setup
     initStory(scene);
 
-    // 2. Galaxies
+    // 4. Galaxies
     galaxyPoints = createGalaxy(scene, redStringCurve);
 
-    // 3. Procedural Crystal Heart
+    // 5. Procedural Crystal Heart
     heartMeshPoints = createProceduralHeart(scene, new THREE.Vector3(0, 0, -210));
     
     // Create DOM element tag for the name
@@ -256,10 +258,10 @@ function initUniverseScene(userName) {
     }
     label.innerText = userName;
 
-    // 4. Bloom Flowers Cluster
+    // 6. Bloom Flowers Cluster
     createFlowerCluster(scene, new THREE.Vector3(0, 5, -150), floatingFlowers);
 
-    // 5. Build Constellation line segment mesh
+    // 7. Build Constellation line segment mesh
     constellationPositions = new Float32Array(maxConstellationLines * 2 * 3);
     const constellationGeometry = new THREE.BufferGeometry();
     constellationGeometry.setAttribute('position', new THREE.BufferAttribute(constellationPositions, 3));
@@ -274,19 +276,55 @@ function initUniverseScene(userName) {
     constellationLines = new THREE.LineSegments(constellationGeometry, constellationMaterial);
     scene.add(constellationLines);
 
-    // 6. Holograms & Memories loading
+    // 8. Holograms & Memories loading
     createStaticFloatingNotes();
     fetchAndSpawnUserMemories();
 
-    // 7. Sensory HUD details (custom cursor scroll hints, etc.)
-    initScrollHint();
+    // 9. Interactive UI initialization
     initCosmicFeaturesUI((name, message, emoji, onSuccess) => submitEchoMemory(name, message, emoji, onSuccess));
 
-    // 8. Bind Scroll triggers
-    window.addEventListener('scroll', handlePageScroll);
+    // 10. Cinematic Big Bang Expansion Transition
+    bloomPass.strength = 5.0; // Ignition flash
     
-    // 9. Start loop
-    animateScrollStory();
+    const transitionTimeline = gsap.timeline({
+        onUpdate: () => {
+            // Subtle rotation of galaxy for dynamic motion
+            if (galaxyPoints) galaxyPoints.rotation.y += 0.001;
+            
+            // Keep looking at the center as the camera moves out
+            camera.lookAt(new THREE.Vector3(0, 0, 0));
+            composer.render();
+        },
+        onComplete: () => {
+            // Restore scroll and initiate normal loop
+            document.body.style.overflowY = 'auto';
+            document.body.style.height = `${Config.TOTAL_SCROLL_HEIGHT}px`;
+            
+            scrollProgress = 0;
+            targetScrollProgress = 0;
+            
+            initScrollHint();
+            
+            window.addEventListener('scroll', handlePageScroll);
+            animateScrollStory();
+        }
+    });
+
+    // Camera flies back out to the beginning of the Red String Curve (0, 0, 50)
+    transitionTimeline.to(camera.position, {
+        x: 0,
+        y: 0,
+        z: 50,
+        duration: 3.5,
+        ease: "power2.out"
+    });
+
+    // Fade the flash back to normal bloom strength
+    transitionTimeline.to(bloomPass, {
+        strength: 1.5,
+        duration: 3.5,
+        ease: "power2.out"
+    }, "<");
 }
 
 function handlePageScroll() {

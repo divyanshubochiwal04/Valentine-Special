@@ -17,7 +17,7 @@ export function initInteraction(scene, onMemoryStarClicked) {
     
     // Mouse Move listener
     window.addEventListener('mousemove', (e) => {
-        handleMoveInput(e.clientX, e.clientY);
+        handleMoveInput(e.clientX, e.clientY, scene);
         
         // Render custom cursor if element exists
         if (cursorEl) {
@@ -38,7 +38,7 @@ export function initInteraction(scene, onMemoryStarClicked) {
     // Touch Move support (throttled)
     window.addEventListener('touchmove', (e) => {
         if (e.touches.length > 0) {
-            handleMoveInput(e.touches[0].clientX, e.touches[0].clientY);
+            handleMoveInput(e.touches[0].clientX, e.touches[0].clientY, scene);
         }
     }, { passive: true });
 
@@ -63,7 +63,7 @@ export function initInteraction(scene, onMemoryStarClicked) {
     });
 }
 
-function handleMoveInput(clientX, clientY) {
+function handleMoveInput(clientX, clientY, scene) {
     InputState.mouseX = clientX;
     InputState.mouseY = clientY;
     InputState.targetX = clientX / window.innerWidth - 0.5;
@@ -71,6 +71,34 @@ function handleMoveInput(clientX, clientY) {
     
     InputState.mouseNormalized.x = (clientX / window.innerWidth) * 2 - 1;
     InputState.mouseNormalized.y = -(clientY / window.innerHeight) * 2 + 1;
+
+    // Raycast hover detection for interactive stars and cards
+    if (scene && scene.userData.phase === 'universe') {
+        InputState.raycaster.setFromCamera(InputState.mouseNormalized, camera);
+        const memoryStars = scene.userData.memoryStars || [];
+        const intersects = InputState.raycaster.intersectObjects(memoryStars);
+
+        if (intersects.length > 0) {
+            cursorEl?.classList.add('clickable');
+            
+            // Subtle scale-up of the hovered object
+            const star = intersects[0].object;
+            if (star && !star.userData.isHovered) {
+                star.userData.isHovered = true;
+                gsap.to(star.scale, { x: 1.4, y: 1.4, z: 1.4, duration: 0.3 });
+            }
+        } else {
+            cursorEl?.classList.remove('clickable');
+            
+            // Restore scale of any previously hovered cards
+            memoryStars.forEach(star => {
+                if (star.userData.isHovered) {
+                    star.userData.isHovered = false;
+                    gsap.to(star.scale, { x: 1.0, y: 1.0, z: 1.0, duration: 0.3 });
+                }
+            });
+        }
+    }
 }
 
 function detectIntersections(clientX, clientY, scene, callback) {

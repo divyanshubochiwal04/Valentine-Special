@@ -51,7 +51,29 @@ body {
     border-radius: 50%;
     transform: translate(-50%, -50%);
     box-shadow: 0 0 10px #ff0040, 0 0 20px #ff0055;
-    will-change: transform;
+    will-change: transform, width, height, background, border;
+    transition: width 0.3s, height 0.3s, background 0.3s, border 0.3s;
+}
+
+#custom-cursor.clickable {
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 2px solid #ff0040;
+    box-shadow: 0 0 15px #ff0040, 0 0 30px #ff0055;
+}
+
+#custom-cursor.clickable::after {
+    content: "VIEW";
+    font-size: 6px;
+    color: #ff0040;
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    letter-spacing: 0.5px;
 }
 
 /* Story Sections - Mobile First */

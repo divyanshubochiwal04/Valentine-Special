@@ -204,3 +204,21 @@ export function initCosmicFeaturesUI(onSubmitEcho) {
         onSubmitEcho(name, msg, selectedEmoji, closeEcho);
     });
 }
+
+// Memory popup close listener
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('close-memory')?.addEventListener('click', () => {
+        const popup = document.getElementById('memory-popup');
+        if (popup) {
+            gsap.to(popup, {
+                opacity: 0,
+                scale: 0.9,
+                duration: 0.3,
+                onComplete: () => {
+                    popup.classList.add('hidden');
+                    popup.style.display = 'none';
+                }
+            });
+        }
+    });
+});
