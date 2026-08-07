@@ -1,0 +1,230 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Playfair+Display:ital,wght@0,400;1,400&display=swap');
+
+:root {
+    --primary-red: #dc2626;
+    --secondary-red: #7f1d1d;
+    --text-glow: 0 0 15px rgba(220, 38, 38, 0.4);
+    --bg-overlay: radial-gradient(circle at center, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.6) 60%, rgba(0, 0, 0, 0.8) 100%);
+
+    /* Fluid Spacing & Typography - Optimized for Mobile First */
+    --fluid-h1: clamp(2.2rem, 10vw, 5rem);
+    --fluid-h2: clamp(1.8rem, 8vw, 4rem);
+    --fluid-p: clamp(0.95rem, 4vw, 1.4rem);
+    --safe-padding: clamp(1.2rem, 6vw, 4rem);
+}
+
+body {
+    margin: 0;
+    overflow-x: hidden;
+    overflow-y: hidden; /* Canvas fixed */
+    background-color: #000;
+    color: #fff;
+    font-family: 'Playfair Display', serif;
+    -webkit-font-smoothing: antialiased;
+    /* Support for mobile browser browser bars */
+    min-height: 100dvh;
+    touch-action: none; /* Prevent accidental zoom/bounce on 3D scene */
+}
+
+#canvas-container {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    height: 100dvh;
+}
+
+#ui-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+    display: grid;
+    place-items: center;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Custom premium cursor styling */
+#custom-cursor {
+    width: 8px;
+    height: 8px;
+    background: #ff0040;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px #ff0040, 0 0 20px #ff0055;
+    will-change: transform;
+}
+
+/* Story Sections - Mobile First */
+#story-container section {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--safe-padding);
+    text-align: center;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 1s cubic-bezier(0.23, 1, 0.32, 1);
+    background: var(--bg-overlay);
+    position: relative;
+}
+
+#story-container section.active {
+    opacity: 1;
+    transform: translateY(0px);
+}
+
+#story-container h2 {
+    font-size: var(--fluid-h2);
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+    width: 100%;
+}
+
+#story-container p {
+    font-size: var(--fluid-p);
+    max-width: 90%;
+    margin-inline: auto;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.6;
+}
+
+/* Desktop Adjustments Layered Only If Needed */
+@media (min-width: 1024px) {
+    #story-container p {
+        max-width: 60ch;
+    }
+
+    #story-container h2 {
+        margin-bottom: 1rem;
+    }
+}
+
+/* UI Elements Positioning - Mobile First */
+#cosmic-oracle {
+    position: fixed;
+    top: max(var(--safe-padding), 2rem);
+    right: var(--safe-padding);
+    z-index: 60;
+    width: clamp(150px, 40vw, 300px);
+    pointer-events: none;
+}
+
+#memory-board-ui {
+    position: fixed;
+    bottom: max(var(--safe-padding), 2rem);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 60;
+    width: max-content;
+}
+
+/* Mobile Base Style Overrides */
+@media (max-width: 768px) {
+    #title-text {
+        font-size: 2.8rem;
+    }
+
+    #name-input {
+        width: clamp(250px, 80%, 350px);
+        font-size: 1.2rem;
+    }
+
+    #oracle-bubble {
+        font-size: 0.8rem;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.8);
+    }
+
+    #valentine-finale h1 {
+        font-size: 2.2rem !important;
+    }
+
+    #finale-buttons {
+        flex-direction: column;
+        width: 100%;
+        gap: 1.5rem;
+        padding-inline: 2rem;
+    }
+
+    #yes-btn,
+    #no-btn {
+        width: 100%;
+        max-width: 300px;
+    }
+}
+
+.pointer-events-auto {
+    pointer-events: auto;
+}
+
+.cinzel {
+    font-family: 'Cinzel', serif;
+}
+
+::-webkit-scrollbar {
+    width: 0;
+    background: transparent;
+}
+
+.text-shadow-glow {
+    text-shadow: var(--text-glow);
+}
+
+.hidden {
+    display: none !important;
+}
+
+#scroll-hint {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: opacity 1s ease;
+}
+
+.scroll-icon {
+    width: 20px;
+    height: 35px;
+    border: 2px solid rgba(220, 38, 38, 0.5);
+    border-radius: 10px;
+    position: relative;
+}
+
+.scroll-dot {
+    width: 4px;
+    height: 4px;
+    background: #dc2626;
+    border-radius: 50%;
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: scroll-anim 2s infinite;
+}
+
+@keyframes scroll-anim {
+    0% {
+        top: 5px;
+        opacity: 1;
+    }
+
+    100% {
+        top: 25px;
+        opacity: 0;
+    }
+}
+
+/* Custom interactive classes */
+#emoji-picker span.selected {
+    opacity: 1;
+    transform: scale(1.2);
+    border-bottom: 2px solid #ff0040;
+}

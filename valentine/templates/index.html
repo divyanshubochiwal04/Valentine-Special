@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Another Universe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+
+<body>
+    <div id="canvas-container"></div>
+    <div id="custom-cursor" class="fixed pointer-events-none z-[9999] opacity-0 transition-opacity duration-300"></div>
+
+    <div id="ui-layer" class="flex items-center justify-center min-h-screen">
+        <!-- Entry Section -->
+        <div id="entry-section" class="text-center pointer-events-auto transition-opacity duration-1000">
+            <h1 class="text-4xl md:text-6xl text-red-600 mb-8 tracking-widest cinzel opacity-0" id="title-text">THE VOID
+            </h1>
+
+            <div class="relative group opacity-0" id="input-container">
+                <input type="text" id="name-input"
+                    class="bg-transparent border-b-2 border-red-900 text-white text-2xl text-center py-2 px-4 focus:outline-none focus:border-red-500 transition-all w-64 md:w-96"
+                    placeholder="Enter your name to ignite..." autocomplete="off">
+                <div
+                    class="absolute inset-0 bg-red-500 blur-xl opacity-0 group-hover:opacity-20 transition-opacity duration-500 -z-10">
+                </div>
+            </div>
+
+            <button id="ignite-btn"
+                class="mt-12 px-8 py-3 border border-red-800 text-red-500 hover:text-white hover:bg-red-900/40 hover:border-red-500 transition-all duration-500 rounded-full text-lg tracking-widest uppercase opacity-0 transform translate-y-4">
+                Ignite Universe
+            </button>
+        </div>
+
+        <!-- STORY CHAPTERS (Scrollable Overlay) -->
+        <div id="story-container" class="absolute top-0 left-0 w-full pointer-events-none hidden">
+            <!-- Chapter 1: The Collision -->
+            <section id="chapter-1"
+                class="h-screen flex flex-col items-center justify-center p-8 opacity-0 transition-opacity">
+                <h2 class="text-4xl md:text-6xl text-red-500 cinzel font-bold text-center mb-4 text-shadow-glow">THE
+                    COLLISION</h2>
+                <p class="text-xl md:text-2xl text-white/80 font-serif italic text-center max-w-2xl">
+                    "Some meetings are written in the stars, long before we even exist."
+                </p>
+            </section>
+
+            <!-- Chapter 2: The Chaos -->
+            <section id="chapter-2"
+                class="h-screen flex flex-col items-center justify-center p-8 opacity-0 transition-opacity">
+                <h2 class="text-4xl md:text-6xl text-purple-400 cinzel font-bold text-center mb-4 text-shadow-glow">IN
+                    THE CHAOS</h2>
+                <p class="text-xl md:text-2xl text-white/80 font-serif italic text-center max-w-2xl">
+                    "Is shor bhari duniya mein, bas tumhari awaaz hi sukoon hai."<br>
+                    <span class="text-sm text-gray-400">(In this noisy world, only your voice is peace.)</span>
+                </p>
+            </section>
+
+            <!-- Chapter 3: The Bloom -->
+            <section id="chapter-3"
+                class="h-screen flex flex-col items-center justify-center p-8 opacity-0 transition-opacity">
+                <h2 class="text-4xl md:text-6xl text-pink-500 cinzel font-bold text-center mb-4 text-shadow-glow">THE
+                    BLOOM</h2>
+                <p class="text-xl md:text-2xl text-white/80 font-serif italic text-center max-w-2xl">
+                    "Like a flower in the void, you brought color to my monochrome life."
+                </p>
+            </section>
+
+            <!-- Chapter 4: The Promise -->
+            <section id="chapter-4"
+                class="h-screen flex flex-col items-center justify-center p-8 opacity-0 transition-opacity">
+                <h2 class="text-5xl md:text-7xl text-red-600 cinzel font-bold text-center mb-4 text-shadow-glow">THE
+                    PROMISE</h2>
+                <p class="text-2xl md:text-3xl text-white font-serif italic text-center max-w-3xl">
+                    "In every universe, in every timeline...<br>I would find you."
+                </p>
+            </section>
+        </div>
+
+        <!-- Scroll Hint -->
+        <div id="scroll-hint">
+            <div class="scroll-icon">
+                <div class="scroll-dot"></div>
+            </div>
+            <span class="cinzel text-[10px] tracking-[0.3em] text-red-500/80">Scroll to Soulify</span>
+        </div>
+
+        <!-- Quote Container (Hidden/Removed for Story Mode) -->
+        <div id="quote-container" class="hidden absolute bottom-10 left-0 w-full text-center px-4 pointer-events-none">
+            <p id="quote-text" class="text-xl md:text-2xl text-red-200/80 italic"></p>
+        </div>
+
+        <!-- Memory Popup (Hidden) -->
+        <div id="memory-popup"
+            class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/90 border border-red-500/30 p-8 rounded-3xl backdrop-blur-xl w-[min(90%,500px)] text-center z-[100] transition-all duration-500 pointer-events-auto shadow-[0_0_50px_rgba(0,0,0,1)]">
+            <h3 id="popup-title" class="text-red-500 cinzel text-lg md:text-xl mb-4 tracking-[0.2em]">A MEMORY FRAGMENT
+            </h3>
+            <p id="memory-content" class="text-white/95 text-lg md:text-2xl font-serif italic mb-8 leading-relaxed"></p>
+            <button id="close-memory"
+                class="w-full md:w-auto text-xs text-red-400 hover:text-white border border-red-900/50 hover:bg-red-600 px-8 py-3 rounded-full transition-all uppercase tracking-widest">Close</button>
+        </div>
+
+        <!-- VALENTINE FINALE MODAL -->
+        <div id="valentine-finale"
+            class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full text-center z-50 pointer-events-auto">
+            <h1 class="cinzel text-red-500 font-bold mb-8 text-shadow-glow opacity-0 scale-50"
+                style="font-size: var(--fluid-h1);" id="finale-title">
+                Will you be my<br>Valentine?
+            </h1>
+
+            <div class="flex gap-8 justify-center items-center opacity-0 translate-y-10" id="finale-buttons">
+                <button id="yes-btn"
+                    class="bg-red-600 hover:bg-red-500 text-white font-serif text-2xl px-12 py-4 rounded-full shadow-[0_0_30px_rgba(255,0,0,0.6)] hover:shadow-[0_0_50px_rgba(255,0,0,0.9)] transition-all transform hover:scale-110">
+                    YES! 💖
+                </button>
+                <button id="no-btn"
+                    class="bg-transparent border border-red-900 text-red-900 hover:text-red-700 font-serif text-xl px-8 py-3 rounded-full transition-all">
+                    No...
+                </button>
+            </div>
+        </div>
+
+        <!-- NEW: Cosmic Message Board Button (Fixed at Bottom Right) -->
+        <div id="memory-board-ui" class="hidden fixed bottom-8 right-8 z-50 pointer-events-auto">
+            <button id="echo-btn"
+                class="bg-black/40 hover:bg-red-900/40 border border-red-900/50 text-red-500 hover:text-white px-6 py-3 rounded-full backdrop-blur-md transition-all duration-500 group flex items-center gap-3 cinzel tracking-widest text-sm">
+                <span class="group-hover:animate-pulse">✨</span> ECHO INTO THE VOID
+            </button>
+        </div>
+
+        <!-- NEW: Cosmic Oracle (Fixed at Top Right) -->
+        <div id="cosmic-oracle" class="hidden fixed top-8 right-8 z-50 pointer-events-auto max-w-xs">
+            <div id="oracle-bubble"
+                class="bg-black/60 border border-purple-900/50 p-4 rounded-2xl backdrop-blur-md text-purple-200/80 italic text-sm text-right opacity-0 transform translate-x-10 transition-all duration-1000">
+                "The stars whisper of a destined connection..."
+            </div>
+        </div>
+
+        <!-- NEW: Echo Modal (Leave a Memory) -->
+        <div id="echo-modal"
+            class="hidden fixed inset-0 z-[110] flex items-center justify-center bg-transparent pointer-events-auto">
+            <div class="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity duration-700"
+                id="echo-modal-overlay"></div>
+            <div class="relative bg-zinc-950 border border-red-900/40 p-6 md:p-10 rounded-[2rem] w-[min(95%,450px)] transform scale-90 opacity-0 transition-all duration-500 shadow-2xl"
+                id="echo-modal-content">
+                <h3 class="text-2xl md:text-3xl cinzel text-red-500 mb-8 tracking-[0.1em] text-center">ETCH A MEMORY
+                </h3>
+                <div class="space-y-8">
+                    <div class="group">
+                        <label
+                            class="block text-[10px] text-red-900 group-focus-within:text-red-500 transition-colors uppercase tracking-[0.2em] mb-2">Your
+                            Essence</label>
+                        <input type="text" id="echo-name"
+                            class="w-full bg-transparent border-b border-zinc-800 group-focus-within:border-red-600 text-white py-2 focus:outline-none transition-all placeholder:text-zinc-800"
+                            placeholder="Type your name...">
+                    </div>
+                    <div class="group">
+                        <label
+                            class="block text-[10px] text-red-900 group-focus-within:text-red-500 transition-colors uppercase tracking-[0.2em] mb-2">Memory
+                            Fragment</label>
+                        <textarea id="echo-message" rows="3"
+                            class="w-full bg-transparent border-b border-zinc-800 group-focus-within:border-red-600 text-white py-2 focus:outline-none resize-none transition-all placeholder:text-zinc-800"
+                            placeholder="What should the stars remember?"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-red-900 uppercase tracking-[0.2em] mb-4">Choose a
+                            Symbol</label>
+                        <div class="flex justify-between items-center text-3xl" id="emoji-picker">
+                            <span
+                                class="cursor-pointer hover:scale-125 hover:opacity-100 transition-all opacity-30 px-2 selected"
+                                data-emoji="✨">✨</span>
+                            <span
+                                class="cursor-pointer hover:scale-125 hover:opacity-100 transition-all opacity-30 px-2"
+                                data-emoji="💖">💖</span>
+                            <span
+                                class="cursor-pointer hover:scale-125 hover:opacity-100 transition-all opacity-30 px-2"
+                                data-emoji="🌟">🌟</span>
+                            <span
+                                class="cursor-pointer hover:scale-125 hover:opacity-100 transition-all opacity-30 px-2"
+                                data-emoji="🌹">🌹</span>
+                            <span
+                                class="cursor-pointer hover:scale-125 hover:opacity-100 transition-all opacity-30 px-2"
+                                data-emoji="🌙">🌙</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 pt-4">
+                        <button id="cancel-echo"
+                            class="flex-1 py-4 border border-zinc-900 text-zinc-600 hover:text-white hover:bg-zinc-900 transition-all rounded-2xl text-[10px] tracking-widest uppercase font-bold">Vanish</button>
+                        <button id="submit-echo"
+                            class="flex-2 py-4 bg-red-600 text-white hover:bg-red-500 transition-all rounded-2xl text-[10px] tracking-[0.2em] uppercase font-bold shadow-[0_10px_30px_rgba(220,38,38,0.3)]">Etch
+                            Into Space</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW: Final Universal Thank You -->
+        <div id="thank-you-popup"
+            class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black transition-all duration-1000 opacity-0">
+            <div class="text-center space-y-8 p-8 transform scale-95 transition-all duration-1000"
+                id="thank-you-content">
+                <h2 class="text-4xl md:text-7xl cinzel text-red-600 animate-pulse" id="ty-title">THANK YOU</h2>
+                <p class="text-2xl md:text-3xl font-serif italic text-white/50" id="ty-name"></p>
+                <p class="text-sm tracking-[0.5em] text-red-900 uppercase">You have joined the Stars</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio -->
+    <audio id="bg-music" loop>
+        <source src="/static/assets/dooron_dooron.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="sound-twinkle" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-glittering-stars-twinkle-2428.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="sound-shimmer" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-magic-marimba-long-shimmer-511.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Import Map for Three.js Modules -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- Shaders -->
+    <script type="x-shader/x-vertex" id="vertexShader">
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    </script>
+    <script type="x-shader/x-fragment" id="fragmentShader">
+        varying vec2 vUv;
+        uniform float time;
+        void main() {
+            vec2 p = vUv * 2.0 - 1.0;
+            float r = length(p);
+            float a = atan(p.y, p.x);
+            float f = cos(a * 3.0 + time) * 0.1 + sin(r * 10.0 - time) * 0.1;
+            vec3 color = vec3(0.5 + 0.5 * sin(time + r), 0.0, 0.0);
+            gl_FragColor = vec4(color * (1.0 - r), 1.0);
+        }
+    </script>
+
+    <script type="module" src="/static/js/main.js?v=10"></script>
+
+</body>
+
+</html>
