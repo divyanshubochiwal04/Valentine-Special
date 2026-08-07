@@ -63,16 +63,8 @@ body {
     justify-content: center;
     padding: var(--safe-padding);
     text-align: center;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 1s cubic-bezier(0.23, 1, 0.32, 1);
-    background: var(--bg-overlay);
+    background: transparent;
     position: relative;
-}
-
-#story-container section.active {
-    opacity: 1;
-    transform: translateY(0px);
 }
 
 #story-container h2 {
@@ -80,6 +72,8 @@ body {
     line-height: 1.2;
     margin-bottom: 0.5rem;
     width: 100%;
+    opacity: 0;
+    will-change: transform, opacity;
 }
 
 #story-container p {
@@ -88,6 +82,8 @@ body {
     margin-inline: auto;
     color: rgba(255, 255, 255, 0.9);
     line-height: 1.6;
+    opacity: 0;
+    will-change: transform, opacity;
 }
 
 /* Desktop Adjustments Layered Only If Needed */

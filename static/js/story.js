@@ -61,11 +61,40 @@ export function updateStoryOverlay(scrollProgress) {
         const point = checkPoints[idx];
         const dist = Math.abs(scrollProgress - point);
         
-        // If camera is close to the chapter node, show the overlay text
-        if (dist < 0.18) {
+        const isNear = dist < 0.18;
+        const hasActiveClass = chap.classList.contains('active');
+
+        if (isNear && !hasActiveClass) {
             chap.classList.add('active');
-        } else {
+            
+            const h2 = chap.querySelector('h2');
+            const p = chap.querySelector('p');
+            
+            // GSAP stagger slide-in animation for an elegant editorial look
+            gsap.killTweensOf([h2, p]);
+            gsap.fromTo(h2, 
+                { y: 30, opacity: 0 }, 
+                { y: 0, opacity: 1, duration: 1.0, ease: "power3.out" }
+            );
+            gsap.fromTo(p, 
+                { y: 20, opacity: 0 }, 
+                { y: 0, opacity: 0.9, duration: 0.8, ease: "power2.out", delay: 0.25 }
+            );
+        } else if (!isNear && hasActiveClass) {
             chap.classList.remove('active');
+            
+            const h2 = chap.querySelector('h2');
+            const p = chap.querySelector('p');
+            
+            // Slide-out and fade out
+            gsap.killTweensOf([h2, p]);
+            gsap.to([h2, p], { 
+                opacity: 0, 
+                y: -20, 
+                duration: 0.6, 
+                ease: "power2.in", 
+                stagger: 0.05 
+            });
         }
     });
 }

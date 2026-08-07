@@ -19,7 +19,8 @@ import {
 } from './particles.js';
 import { 
     initStory, 
-    redStringCurve 
+    redStringCurve,
+    updateStoryOverlay
 } from './story.js';
 import { 
     capturedUserName, 

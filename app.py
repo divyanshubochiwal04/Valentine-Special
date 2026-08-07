@@ -46,6 +46,12 @@ def create_app():
             logger.error(f"Unexpected error in enter_universe: {e}")
             return jsonify({'error': 'An internal cosmic error occurred'}), 500
 
+    @app.route('/api/debug/error', methods=['POST'])
+    def debug_error():
+        data = request.get_json(silent=True) or {}
+        logger.error(f"[BROWSER ERROR] message: {data.get('message')}, source: {data.get('source')}, line: {data.get('lineno')}, col: {data.get('colno')}, error: {data.get('error')}")
+        return jsonify({'status': 'logged'})
+
     @app.route('/api/quotes', methods=['GET'])
     def get_quotes():
         conn = get_db_connection()
