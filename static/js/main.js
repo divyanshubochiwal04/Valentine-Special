@@ -16,6 +16,7 @@ import {
     createProceduralHeart, 
     createFlowerCluster, 
     createHeartExplosion, 
+    createBigBangExplosion,
     disposeObject 
 } from './particles.js';
 import { 
@@ -285,6 +286,7 @@ function initUniverseScene(userName) {
     initCosmicFeaturesUI((name, message, emoji, onSuccess) => submitEchoMemory(name, message, emoji, onSuccess));
 
     // 10. Cinematic Big Bang Expansion Transition
+    createBigBangExplosion(scene, new THREE.Vector3(0, 0, 0));
     bloomPass.strength = 5.0; // Ignition flash
     
     const transitionTimeline = gsap.timeline({
@@ -487,6 +489,38 @@ function createHolographicCard(pos, emoji, noteIndex, label, customMessage = nul
         message: customMessage
     };
 
+    // Bouncing Finger child mesh pointing to the card
+    const fingerCanvas = document.createElement('canvas');
+    fingerCanvas.width = 128;
+    fingerCanvas.height = 128;
+    const fingerCtx = fingerCanvas.getContext('2d');
+    fingerCtx.font = '70px serif';
+    fingerCtx.textAlign = 'center';
+    fingerCtx.textBaseline = 'middle';
+    fingerCtx.fillText('👇', 64, 64);
+    
+    const fingerTex = new THREE.CanvasTexture(fingerCanvas);
+    const fingerGeo = new THREE.PlaneGeometry(0.8, 0.8);
+    const fingerMat = new THREE.MeshBasicMaterial({
+        map: fingerTex,
+        transparent: true,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending
+    });
+    
+    const fingerMesh = new THREE.Mesh(fingerGeo, fingerMat);
+    fingerMesh.position.set(0, 2.0, 0); // Above the card locally
+    card.add(fingerMesh);
+    
+    // Animate finger bouncing
+    gsap.to(fingerMesh.position, {
+        y: 2.4,
+        duration: 0.6,
+        yoyo: true,
+        repeat: -1,
+        ease: "sine.inOut"
+    });
+
     scene.add(card);
     memoryStars.push(card);
 
@@ -518,9 +552,11 @@ function createStaticFloatingNotes() {
     ];
 
     positions.forEach((item, index) => {
+        // Spread cards 6 to 14 units away from the center path
+        const side = Math.random() > 0.5 ? 1 : -1;
         const pos = new THREE.Vector3(
-            (Math.random() - 0.5) * 12,
-            (Math.random() - 0.5) * 6,
+            side * (6 + Math.random() * 8),
+            (Math.random() - 0.5) * 8,
             item.z
         );
         createHolographicCard(pos, item.emoji, index, "A LOVE NOTES FRAGMENT");
@@ -534,10 +570,12 @@ async function fetchAndSpawnUserMemories() {
         
         const memories = await response.json();
         memories.forEach((m, idx) => {
+            // Spread cards 7 to 15 units away from the center path
+            const side = Math.random() > 0.5 ? 1 : -1;
             const pos = new THREE.Vector3(
-                (Math.random() - 0.5) * 20,
-                (Math.random() - 0.5) * 12,
-                -20 - (idx * 10) // Spread coordinates sequentially along path depth
+                side * (7 + Math.random() * 8),
+                (Math.random() - 0.5) * 8,
+                -20 - (idx * 15) // Spread depth slightly further
             );
             createHolographicCard(pos, m.emoji || '✨', idx, m.user_name || "A MEMORY", m.message);
         });

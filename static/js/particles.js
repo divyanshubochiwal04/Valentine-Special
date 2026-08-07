@@ -338,3 +338,88 @@ export function createHeartExplosion(scene, pos) {
         }
     });
 }
+
+export function createBigBangExplosion(scene, pos) {
+    const count = 5000;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const velocities = [];
+
+    // Vivid Big Bang color palette: true red, electric orange, hot pink, deep purple
+    const palette = [
+        new THREE.Color('#ff0040'), 
+        new THREE.Color('#ff5500'), 
+        new THREE.Color('#9b00e8'), 
+        new THREE.Color('#ff00aa')
+    ];
+
+    for (let i = 0; i < count; i++) {
+        const i3 = i * 3;
+        positions[i3] = pos.x;
+        positions[i3 + 1] = pos.y;
+        positions[i3 + 2] = pos.z;
+
+        const col = palette[Math.floor(Math.random() * palette.length)];
+        colors[i3] = col.r;
+        colors[i3 + 1] = col.g;
+        colors[i3 + 2] = col.b;
+
+        // Spherical expansion velocity vector
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2) - 1);
+        const speed = 12 + Math.random() * 38; // Expansion speed range
+
+        velocities.push(new THREE.Vector3(
+            Math.sin(phi) * Math.cos(theta) * speed,
+            Math.sin(phi) * Math.sin(theta) * speed,
+            Math.cos(phi) * speed
+        ));
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({
+        size: 0.35,
+        vertexColors: true,
+        transparent: true,
+        opacity: 1.0,
+        blending: THREE.AdditiveBlending
+    });
+
+    const explosion = new THREE.Points(geometry, material);
+    scene.add(explosion);
+
+    const positionsAttr = geometry.getAttribute('position');
+    const array = positionsAttr.array;
+
+    const timeline = gsap.timeline({
+        onComplete: () => {
+            disposeObject(explosion);
+        }
+    });
+
+    // Ease opacity out slowly over 4.5 seconds
+    timeline.to(material, {
+        opacity: 0.0,
+        duration: 4.5,
+        ease: "power2.inOut"
+    });
+
+    // Update positions along trajectory vectors
+    timeline.to({}, {
+        duration: 4.5,
+        onUpdate: () => {
+            const progress = timeline.progress();
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                const vel = velocities[i];
+                array[i3] = pos.x + vel.x * progress;
+                array[i3 + 1] = pos.y + vel.y * progress;
+                array[i3 + 2] = pos.z + vel.z * progress;
+            }
+            positionsAttr.needsUpdate = true;
+        }
+    }, "<");
+}
