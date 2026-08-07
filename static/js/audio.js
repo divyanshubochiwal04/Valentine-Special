@@ -34,6 +34,49 @@ export const AudioManager = {
         }
     },
 
+    audioCtx: null,
+    analyser: null,
+    dataArray: null,
+    source: null,
+
+    initAnalyser() {
+        if (this.analyser) return;
+
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            this.audioCtx = new AudioContextClass();
+            this.analyser = this.audioCtx.createAnalyser();
+            this.analyser.fftSize = 256;
+            
+            // Connect bgMusic element to AudioContext
+            this.source = this.audioCtx.createMediaElementSource(this.bgMusic);
+            this.source.connect(this.analyser);
+            this.analyser.connect(this.audioCtx.destination);
+
+            const bufferLength = this.analyser.frequencyBinCount;
+            this.dataArray = new Uint8Array(bufferLength);
+            console.log("[Audio] Analyser initialized successfully.");
+        } catch (e) {
+            console.warn("[Audio] Could not initialize Web Audio Analyser:", e);
+        }
+    },
+
+    getAverageFrequency() {
+        if (!this.analyser || !this.dataArray) return 0;
+        
+        if (this.audioCtx && this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume();
+        }
+
+        this.analyser.getByteFrequencyData(this.dataArray);
+        
+        let sum = 0;
+        for (let i = 0; i < this.dataArray.length; i++) {
+            sum += this.dataArray[i];
+        }
+        return sum / this.dataArray.length; // 0 to 255
+    },
+
     startBackgroundMusic() {
         if (!this.bgMusic) return;
         
@@ -41,6 +84,9 @@ export const AudioManager = {
         
         this.bgMusic.volume = 0;
         this.bgMusic.play().then(() => {
+            // Initialize analyser node
+            this.initAnalyser();
+
             // Fade in music smoothly
             let vol = 0;
             const targetVolume = 0.4;

@@ -12,6 +12,7 @@ export let bloomPass;
 
 export function initScene() {
     scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x0f0005, 0.012);
     
     // Set perspective camera with initial values (FOV will be auto-calculated)
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);

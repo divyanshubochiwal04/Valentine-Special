@@ -5,6 +5,8 @@
     --secondary-red: #7f1d1d;
     --text-glow: 0 0 15px rgba(220, 38, 38, 0.4);
     --bg-overlay: radial-gradient(circle at center, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.6) 60%, rgba(0, 0, 0, 0.8) 100%);
+    --nebula-color-1: #0f0005;
+    --nebula-color-2: #050000;
 
     /* Fluid Spacing & Typography - Optimized for Mobile First */
     --fluid-h1: clamp(2.2rem, 10vw, 5rem);
@@ -17,7 +19,8 @@ body {
     margin: 0;
     overflow-x: hidden;
     overflow-y: hidden; /* Canvas fixed */
-    background-color: #000;
+    background: radial-gradient(circle at center, var(--nebula-color-1) 0%, #000000 70%, var(--nebula-color-2) 100%);
+    background-attachment: fixed;
     color: #fff;
     font-family: 'Playfair Display', serif;
     -webkit-font-smoothing: antialiased;

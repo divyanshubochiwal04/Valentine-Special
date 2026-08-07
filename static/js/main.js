@@ -17,6 +17,7 @@ import {
     createFlowerCluster, 
     createHeartExplosion, 
     createBigBangExplosion,
+    create3DCrystalHeartGeometry,
     disposeObject 
 } from './particles.js';
 import { 
@@ -39,6 +40,7 @@ import {
     initInteraction, 
     project3DLabel 
 } from './interaction.js';
+import { ShootingStarManager } from './shootingStars.js';
 
 // --- STATE MANAGEMENT ---
 let animationId = null;
@@ -50,6 +52,7 @@ const floatingFlowers = [];
 let voidParticles = null;
 let galaxyPoints = null;
 let heartMeshPoints = null;
+let shootingStarManager = null;
 
 // Scrolling states
 let scrollProgress = 0;
@@ -123,6 +126,36 @@ function animateVoid() {
     composer.render();
 }
 
+const colorCollision = new THREE.Color(0x0f0005);
+const colorChaos = new THREE.Color(0x070014);
+const colorBloom = new THREE.Color(0x160010);
+const colorPromise = new THREE.Color(0x1c0500);
+
+function updateNebulaSky(progress) {
+    if (!scene || !scene.fog) return;
+    
+    let currentFogColor = new THREE.Color();
+    if (progress < 0.33) {
+        const ratio = progress / 0.33;
+        currentFogColor.lerpColors(colorCollision, colorChaos, ratio);
+    } else if (progress < 0.66) {
+        const ratio = (progress - 0.33) / 0.33;
+        currentFogColor.lerpColors(colorChaos, colorBloom, ratio);
+    } else {
+        const ratio = Math.min(1.0, (progress - 0.66) / 0.34);
+        currentFogColor.lerpColors(colorBloom, colorPromise, ratio);
+    }
+
+    scene.fog.color.copy(currentFogColor);
+    
+    // Update CSS body background variables
+    const hexStr = '#' + currentFogColor.getHexString();
+    document.documentElement.style.setProperty('--nebula-color-1', hexStr);
+    
+    const secondaryColor = currentFogColor.clone().multiplyScalar(0.3);
+    document.documentElement.style.setProperty('--nebula-color-2', '#' + secondaryColor.getHexString());
+}
+
 function animateScrollStory() {
     if (scene.userData.phase !== 'universe') return;
 
@@ -130,6 +163,14 @@ function animateScrollStory() {
 
     // 1. Interpolate Scroll Progress for smooth fluid movement
     scrollProgress += (targetScrollProgress - scrollProgress) * 0.05;
+
+    // Update Nebula sky transitions
+    updateNebulaSky(scrollProgress);
+
+    // Update Shooting Stars
+    if (shootingStarManager) {
+        shootingStarManager.update();
+    }
 
     // 2. Calculate Camera Vectors along the Red String Spline Path
     updateCameraAlongPath(scrollProgress);
@@ -159,6 +200,16 @@ function animateScrollStory() {
         const pulse = 1 + Math.sin(time) * 0.05 + Math.sin(time * 3) * 0.02;
         heartMeshPoints.scale.set(pulse, pulse, pulse);
         heartMeshPoints.rotation.y += 0.002;
+    }
+
+    // Audio Reactive Star Field & Bloom pulsing
+    const avgFreq = AudioManager.getAverageFrequency();
+    const normalizedFreq = avgFreq / 255; // 0 to 1
+    if (galaxyPoints && galaxyPoints.material) {
+        galaxyPoints.material.size = 0.15 + normalizedFreq * 0.2;
+    }
+    if (bloomPass) {
+        bloomPass.strength = 1.3 + normalizedFreq * 1.5;
     }
 
     // 7. Update Audio Level matches scroll depth
@@ -232,6 +283,10 @@ async function igniteUniverse(userName) {
 function initUniverseScene(userName) {
     scene.userData.phase = 'universe';
     scene.userData.memoryStars = memoryStars;
+
+    // Initialize Shooting Star Manager
+    shootingStarManager = new ShootingStarManager(scene, camera);
+    scene.userData.shootingStarManager = shootingStarManager;
 
     // 1. Lock scrolling during Big Bang intro transition
     document.body.style.overflowY = 'hidden';
@@ -449,47 +504,55 @@ function createHeartTrail(pos) {
 // --- HOLOGRAM CARD BUILDERS ---
 
 function createHolographicCard(pos, emoji, noteIndex, label, customMessage = null) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-
-    // Draw background
-    ctx.fillStyle = 'rgba(15, 0, 8, 0.9)'; 
-    ctx.fillRect(0, 0, 512, 512);
-
-    // Border
-    ctx.strokeStyle = '#ff0055';
-    ctx.lineWidth = 16;
-    ctx.strokeRect(10, 10, 492, 492);
-
-    // Emoji glyph center
-    ctx.font = '220px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(emoji, 256, 256);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    const geometry = new THREE.PlaneGeometry(3, 3);
-    const material = new THREE.MeshBasicMaterial({
-        map: texture,
+    // 1. Create 3D Heart Mesh
+    const geometry = create3DCrystalHeartGeometry();
+    const material = new THREE.MeshPhysicalMaterial({
+        color: 0xff3366,
+        emissive: 0x330005,
+        roughness: 0.1,
+        metalness: 0.1,
+        transmission: 0.6,
+        thickness: 0.8,
+        ior: 1.5,
         transparent: true,
-        side: THREE.DoubleSide,
-        blending: THREE.AdditiveBlending
+        opacity: 0.9,
+        side: THREE.DoubleSide
     });
 
-    const card = new THREE.Mesh(geometry, material);
-    card.lookAt(camera.position);
-    card.position.copy(pos);
+    const heartMesh = new THREE.Mesh(geometry, material);
+    heartMesh.lookAt(camera.position);
+    heartMesh.position.copy(pos);
     
-    card.userData = {
+    heartMesh.userData = {
         type: 'love-note',
         index: noteIndex,
         label: label,
         message: customMessage
     };
 
-    // Bouncing Finger child mesh pointing to the card
+    // 2. Create Floating Emoji Child Mesh
+    const emojiCanvas = document.createElement('canvas');
+    emojiCanvas.width = 256;
+    emojiCanvas.height = 256;
+    const emojiCtx = emojiCanvas.getContext('2d');
+    emojiCtx.font = '160px serif';
+    emojiCtx.textAlign = 'center';
+    emojiCtx.textBaseline = 'middle';
+    emojiCtx.fillText(emoji, 128, 128);
+
+    const emojiTex = new THREE.CanvasTexture(emojiCanvas);
+    const emojiGeo = new THREE.PlaneGeometry(1.6, 1.6);
+    const emojiMat = new THREE.MeshBasicMaterial({
+        map: emojiTex,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+    });
+    const emojiMesh = new THREE.Mesh(emojiGeo, emojiMat);
+    emojiMesh.position.set(0, 0, 0.35); // Float slightly in front
+    heartMesh.add(emojiMesh);
+
+    // 3. Bouncing Finger child mesh pointing to the card
     const fingerCanvas = document.createElement('canvas');
     fingerCanvas.width = 128;
     fingerCanvas.height = 128;
@@ -510,7 +573,7 @@ function createHolographicCard(pos, emoji, noteIndex, label, customMessage = nul
     
     const fingerMesh = new THREE.Mesh(fingerGeo, fingerMat);
     fingerMesh.position.set(0, 2.0, 0); // Above the card locally
-    card.add(fingerMesh);
+    heartMesh.add(fingerMesh);
     
     // Animate finger bouncing
     gsap.to(fingerMesh.position, {
@@ -521,11 +584,11 @@ function createHolographicCard(pos, emoji, noteIndex, label, customMessage = nul
         ease: "sine.inOut"
     });
 
-    scene.add(card);
-    memoryStars.push(card);
+    scene.add(heartMesh);
+    memoryStars.push(heartMesh);
 
     // Hover float
-    gsap.to(card.position, {
+    gsap.to(heartMesh.position, {
         y: pos.y + 0.8,
         duration: 2 + Math.random(),
         yoyo: true,
@@ -534,13 +597,71 @@ function createHolographicCard(pos, emoji, noteIndex, label, customMessage = nul
     });
 
     // Wobble spin
-    gsap.to(card.rotation, {
-        y: card.rotation.y + 0.4,
+    gsap.to(heartMesh.rotation, {
+        y: heartMesh.rotation.y + 0.4,
         duration: 3 + Math.random() * 2,
         yoyo: true,
         repeat: -1,
         ease: "sine.inOut"
     });
+
+    return heartMesh;
+}
+
+function findClosestPointOnCurve(point, curve) {
+    if (!curve) return new THREE.Vector3(0, 0, point.z);
+    let minDistance = Infinity;
+    let closestPoint = null;
+    const samples = 100;
+    
+    for (let i = 0; i <= samples; i++) {
+        const t = i / samples;
+        const curvePoint = curve.getPointAt(t);
+        const dist = point.distanceTo(curvePoint);
+        if (dist < minDistance) {
+            minDistance = dist;
+            closestPoint = curvePoint;
+        }
+    }
+    return closestPoint || new THREE.Vector3(0, 0, point.z);
+}
+
+function drawConstellationConnection(startPoint, endPoint, animate = true) {
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array([
+        startPoint.x, startPoint.y, startPoint.z,
+        animate ? startPoint.x : endPoint.x,
+        animate ? startPoint.y : endPoint.y,
+        animate ? startPoint.z : endPoint.z
+    ]);
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const material = new THREE.LineBasicMaterial({
+        color: 0xff3366, // Romantic pinkish-red constellation path
+        transparent: true,
+        opacity: 0.5,
+        blending: THREE.AdditiveBlending
+    });
+
+    const line = new THREE.Line(geometry, material);
+    scene.add(line);
+
+    if (animate) {
+        const lineData = { progress: 0 };
+        gsap.to(lineData, {
+            progress: 1,
+            duration: 2.0,
+            ease: "sine.out",
+            onUpdate: () => {
+                const arr = geometry.attributes.position.array;
+                arr[3] = THREE.MathUtils.lerp(startPoint.x, endPoint.x, lineData.progress);
+                arr[4] = THREE.MathUtils.lerp(startPoint.y, endPoint.y, lineData.progress);
+                arr[5] = THREE.MathUtils.lerp(startPoint.z, endPoint.z, lineData.progress);
+                geometry.attributes.position.needsUpdate = true;
+            }
+        });
+    }
+    return line;
 }
 
 function createStaticFloatingNotes() {
@@ -560,6 +681,8 @@ function createStaticFloatingNotes() {
             item.z
         );
         createHolographicCard(pos, item.emoji, index, "A LOVE NOTES FRAGMENT");
+        const closestPoint = findClosestPointOnCurve(pos, redStringCurve);
+        drawConstellationConnection(closestPoint, pos, false);
     });
 }
 
@@ -578,6 +701,8 @@ async function fetchAndSpawnUserMemories() {
                 -20 - (idx * 15) // Spread depth slightly further
             );
             createHolographicCard(pos, m.emoji || '✨', idx, m.user_name || "A MEMORY", m.message);
+            const closestPoint = findClosestPointOnCurve(pos, redStringCurve);
+            drawConstellationConnection(closestPoint, pos, false);
         });
     } catch (err) {
         console.warn("[Backend] Failed to load custom memories database.", err);
@@ -633,6 +758,8 @@ async function submitEchoMemory(name, message, emoji, onSuccessCallback) {
                 camera.position.z - 10
             );
             createHolographicCard(pos, emoji, Math.floor(Math.random() * 100), name || "A MEMORY", message);
+            const closestPoint = findClosestPointOnCurve(pos, redStringCurve);
+            drawConstellationConnection(closestPoint, pos, true);
 
             onSuccessCallback();
             alert("Your memory has been etched in the stars! ✨");

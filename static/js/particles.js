@@ -339,6 +339,88 @@ export function createHeartExplosion(scene, pos) {
     });
 }
 
+export function createSparkleExplosion(scene, pos) {
+    const count = 300;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const velocities = [];
+
+    const palette = [
+        new THREE.Color('#ffaa44'), // Gold
+        new THREE.Color('#ffdd66'), // Twinkle Yellow
+        new THREE.Color('#ffffff'), // White
+        new THREE.Color('#ff7700')  // Warm Orange
+    ];
+
+    for (let i = 0; i < count; i++) {
+        const i3 = i * 3;
+        positions[i3] = pos.x;
+        positions[i3 + 1] = pos.y;
+        positions[i3 + 2] = pos.z;
+
+        const col = palette[Math.floor(Math.random() * palette.length)];
+        colors[i3] = col.r;
+        colors[i3 + 1] = col.g;
+        colors[i3 + 2] = col.b;
+
+        // Random velocities in sphere
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2) - 1);
+        const speed = 2 + Math.random() * 8;
+        
+        velocities.push({
+            x: Math.sin(phi) * Math.cos(theta) * speed,
+            y: Math.sin(phi) * Math.sin(theta) * speed,
+            z: Math.cos(phi) * speed
+        });
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({
+        size: 0.3,
+        vertexColors: true,
+        transparent: true,
+        opacity: 1,
+        blending: THREE.AdditiveBlending
+    });
+
+    const points = new THREE.Points(geometry, material);
+    scene.add(points);
+
+    const posAttr = geometry.getAttribute('position');
+    const arr = posAttr.array;
+    const startTime = Date.now();
+    const duration = 1200; // ms
+
+    function animateSparkle() {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / duration;
+
+        if (progress >= 1.0) {
+            disposeObject(points);
+            return;
+        }
+
+        for (let i = 0; i < count; i++) {
+            const i3 = i * 3;
+            arr[i3] += velocities[i].x * 0.016;
+            arr[i3 + 1] += velocities[i].y * 0.016;
+            arr[i3 + 2] += velocities[i].z * 0.016;
+            
+            // Add gravity pull downwards
+            velocities[i].y -= 0.1;
+        }
+        posAttr.needsUpdate = true;
+        material.opacity = 1 - progress;
+
+        requestAnimationFrame(animateSparkle);
+    }
+    animateSparkle();
+}
+
 export function createBigBangExplosion(scene, pos) {
     const count = 5000;
     const geometry = new THREE.BufferGeometry();
@@ -422,4 +504,28 @@ export function createBigBangExplosion(scene, pos) {
             positionsAttr.needsUpdate = true;
         }
     }, "<");
+}
+
+export function create3DCrystalHeartGeometry() {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0.8);
+    shape.bezierCurveTo(0, 1.2, 0.5, 1.8, 1.3, 1.8);
+    shape.bezierCurveTo(2.3, 1.8, 2.3, 0.8, 2.3, 0.8);
+    shape.bezierCurveTo(2.3, 0.2, 1.5, -0.6, 0, -1.6);
+    shape.bezierCurveTo(-1.5, -0.6, -2.3, 0.2, -2.3, 0.8);
+    shape.bezierCurveTo(-2.3, 0.8, -2.3, 1.8, -1.3, 1.8);
+    shape.bezierCurveTo(-0.5, 1.8, 0, 1.2, 0, 0.8);
+
+    const extrudeSettings = {
+        depth: 0.4,
+        bevelEnabled: true,
+        bevelSegments: 2,
+        steps: 1,
+        bevelSize: 0.1,
+        bevelThickness: 0.1
+    };
+
+    const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    geometry.center();
+    return geometry;
 }

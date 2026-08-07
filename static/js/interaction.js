@@ -72,18 +72,22 @@ function handleMoveInput(clientX, clientY, scene) {
     InputState.mouseNormalized.x = (clientX / window.innerWidth) * 2 - 1;
     InputState.mouseNormalized.y = -(clientY / window.innerHeight) * 2 + 1;
 
-    // Raycast hover detection for interactive stars and cards
+    // Raycast hover detection for interactive stars, cards, and shooting stars
     if (scene && scene.userData.phase === 'universe') {
         InputState.raycaster.setFromCamera(InputState.mouseNormalized, camera);
         const memoryStars = scene.userData.memoryStars || [];
-        const intersects = InputState.raycaster.intersectObjects(memoryStars);
+        
+        // Find shooting star hitMeshes in scene
+        const hitMeshes = scene.children.filter(child => child.userData && child.userData.type === 'shooting-star');
+        const allTargets = [...memoryStars, ...hitMeshes];
+        const intersects = InputState.raycaster.intersectObjects(allTargets);
 
         if (intersects.length > 0) {
             cursorEl?.classList.add('clickable');
             
-            // Subtle scale-up of the hovered object
             const star = intersects[0].object;
-            if (star && !star.userData.isHovered) {
+            // Only scale memory cards, not shooting star hit boxes
+            if (star && !star.userData.isHovered && star.userData.type !== 'shooting-star') {
                 star.userData.isHovered = true;
                 gsap.to(star.scale, { x: 1.4, y: 1.4, z: 1.4, duration: 0.3 });
             }
@@ -112,7 +116,31 @@ function detectIntersections(clientX, clientY, scene, callback) {
 
     InputState.raycaster.setFromCamera(mouseNorm, camera);
     
-    // Find intersections among all objects stored in 'memoryStars' array
+    // 1. Check shooting stars first
+    const hitMeshes = scene.children.filter(child => child.userData && child.userData.type === 'shooting-star');
+    const starIntersects = InputState.raycaster.intersectObjects(hitMeshes);
+    if (starIntersects.length > 0) {
+        const hitMesh = starIntersects[0].object;
+        const star = hitMesh.userData.parentStar;
+        if (star) {
+            import('./particles.js').then(module => {
+                module.createSparkleExplosion(scene, hitMesh.position);
+            });
+            import('./audio.js').then(module => {
+                module.AudioManager.play('sound-twinkle', 0.8);
+            });
+            
+            const manager = scene.userData.shootingStarManager;
+            if (manager) {
+                manager.destroyStar(star);
+                const idx = manager.stars.indexOf(star);
+                if (idx > -1) manager.stars.splice(idx, 1);
+            }
+            return;
+        }
+    }
+
+    // 2. Fallback to memory stars
     const memoryStars = scene.userData.memoryStars || [];
     const intersects = InputState.raycaster.intersectObjects(memoryStars);
 
