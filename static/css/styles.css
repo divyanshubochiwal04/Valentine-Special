@@ -18,7 +18,7 @@
 body {
     margin: 0;
     overflow-x: hidden;
-    overflow-y: hidden; /* Canvas fixed */
+    overflow-y: auto; /* Canvas fixed */
     background: radial-gradient(circle at center, var(--nebula-color-1) 0%, #000000 70%, var(--nebula-color-2) 100%);
     background-attachment: fixed;
     color: #fff;
@@ -26,7 +26,7 @@ body {
     -webkit-font-smoothing: antialiased;
     /* Support for mobile browser browser bars */
     min-height: 100dvh;
-    touch-action: none; /* Prevent accidental zoom/bounce on 3D scene */
+    touch-action: auto; /* Prevent accidental zoom/bounce on 3D scene */
 }
 
 #canvas-container {
