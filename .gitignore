@@ -36,3 +36,7 @@ logs/
 # Agent customization configurations
 .agents/
 
+# SQLite databases
+*.db
+valentine.db
+

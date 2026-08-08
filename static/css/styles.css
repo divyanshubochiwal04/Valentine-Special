@@ -85,6 +85,7 @@ pointer-events: none;
 /* MOBILE cursor OFF */
 @media (max-width:768px){
 #custom-cursor{display:none;}
+#hover-tooltip{display:none !important;}
 }
 
 #custom-cursor.clickable {

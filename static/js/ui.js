@@ -40,7 +40,7 @@ export function showMemoryPopup(content, label) {
     const textEl = document.getElementById('memory-content');
 
     if (popup && textEl) {
-        textEl.innerHTML = `"${content}"`;
+        textEl.textContent = `"${content}"`;
 
         popup.classList.remove('hidden');
         popup.style.display = 'block';
@@ -119,6 +119,14 @@ export function triggerFinaleUI(userName, onYesCallback) {
         const x = (Math.random() - 0.5) * 200;
         const y = (Math.random() - 0.5) * 200;
         gsap.to(noBtn, { x: x, y: y, duration: 0.2 });
+    });
+
+    // Humorous Click Gag: Block refusal click attempts
+    noBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        alert("The universe has already chosen! Only YES is allowed. 😉💖");
+        // Bring button back to center for ease
+        gsap.to(noBtn, { x: 0, y: 0, duration: 0.5, ease: "bounce.out" });
     });
 }
 

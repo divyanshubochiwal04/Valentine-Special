@@ -506,7 +506,11 @@ export function createBigBangExplosion(scene, pos) {
     }, "<");
 }
 
+let cachedHeartGeometry = null;
+
 export function create3DCrystalHeartGeometry() {
+    if (cachedHeartGeometry) return cachedHeartGeometry;
+
     const shape = new THREE.Shape();
     shape.moveTo(0, 0.8);
     shape.bezierCurveTo(0, 1.2, 0.5, 1.8, 1.3, 1.8);
@@ -527,5 +531,28 @@ export function create3DCrystalHeartGeometry() {
 
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     geometry.center();
+    cachedHeartGeometry = geometry;
     return geometry;
+}
+
+export function createCentralCrystalHeart(scene, position) {
+    const geometry = create3DCrystalHeartGeometry();
+    const material = new THREE.MeshPhysicalMaterial({
+        color: 0xff1144,
+        emissive: 0x220002,
+        roughness: 0.05,
+        metalness: 0.1,
+        transmission: 0.9, // high glass transparency
+        thickness: 2.0,
+        ior: 1.55,
+        transparent: true,
+        opacity: 0.95,
+        side: THREE.DoubleSide
+    });
+    const heartMesh = new THREE.Mesh(geometry, material);
+    heartMesh.name = 'central-crystal-heart';
+    heartMesh.position.copy(position);
+    heartMesh.scale.set(4, 4, 4);
+    scene.add(heartMesh);
+    return heartMesh;
 }

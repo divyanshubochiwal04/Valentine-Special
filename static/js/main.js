@@ -18,11 +18,13 @@ import {
     createHeartExplosion, 
     createBigBangExplosion,
     create3DCrystalHeartGeometry,
+    createCentralCrystalHeart,
     disposeObject 
 } from './particles.js';
 import { 
     initStory, 
     redStringCurve,
+    redStringMesh,
     updateStoryOverlay
 } from './story.js';
 import { 
@@ -45,6 +47,22 @@ import { ShootingStarManager } from './shootingStars.js';
 // --- STATE MANAGEMENT ---
 let animationId = null;
 let clock = new THREE.Clock();
+let centralCrystalHeart = null;
+
+// Ambient quote ticker pacing state
+let lastQuoteTime = 0;
+const quoteInterval = 12000;
+
+// Reusable vector singletons to eliminate GC stutters in render loops
+const _tempV1 = new THREE.Vector3();
+const _tempV2 = new THREE.Vector3();
+const TARGET_HEART_POS = new THREE.Vector3(0, 0, -210);
+
+// Pre-allocated particle pool for mouse trails to avoid instantiation overhead
+const trailPoolSize = 40;
+const trailPool = [];
+let trailPoolIndex = 0;
+let sharedCardMaterial = null;
 
 // Three.js entities reference lists (for disposal and animation)
 const memoryStars = []; 
@@ -91,10 +109,33 @@ window.addEventListener('DOMContentLoaded', () => {
     // 5. Connect UI Transitions
     initUIAnimations((name) => igniteUniverse(name));
 
-    // 6. Start Void Loop
+    // 6. Initialize pre-allocated trail particle pool
+    initTrailPool();
+
+    // 7. Start Void Loop
     scene.userData.phase = 'void';
     animateVoid();
 });
+
+function initTrailPool() {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0]), 3));
+    
+    for (let i = 0; i < trailPoolSize; i++) {
+        const material = new THREE.PointsMaterial({
+            size: 0.25,
+            color: Config.COLORS.pinkish,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const point = new THREE.Points(geometry, material);
+        point.visible = false;
+        scene.add(point);
+        trailPool.push(point);
+    }
+}
 
 // --- RENDER LOOPS ---
 
@@ -194,12 +235,23 @@ function animateScrollStory() {
         f.rotation.y += 0.01;
     });
 
+    // 5. Rotate red string mesh slowly for moiré pattern dynamic shift
+    if (redStringMesh) {
+        redStringMesh.rotation.z += 0.0003;
+    }
+
     // 6. Parametric Heart pulse beat computation
     if (heartMeshPoints) {
         const time = Date.now() * 0.002;
         const pulse = 1 + Math.sin(time) * 0.05 + Math.sin(time * 3) * 0.02;
         heartMeshPoints.scale.set(pulse, pulse, pulse);
         heartMeshPoints.rotation.y += 0.002;
+        
+        if (centralCrystalHeart) {
+            centralCrystalHeart.scale.set(4 * pulse, 4 * pulse, 4 * pulse);
+            centralCrystalHeart.rotation.y += 0.004;
+            centralCrystalHeart.rotation.x = Math.sin(time * 0.5) * 0.08;
+        }
     }
 
     // Audio Reactive Star Field & Bloom pulsing
@@ -228,6 +280,9 @@ function animateScrollStory() {
         createNameConstellation(capturedUserName);
         scene.userData.nameShown = true;
     }
+
+    // 11. Update ambient database quotes in ticker subtitle
+    updateAmbientQuotes();
 
     composer.render();
 }
@@ -301,8 +356,9 @@ function initUniverseScene(userName) {
     // 4. Galaxies
     galaxyPoints = createGalaxy(scene, redStringCurve);
 
-    // 5. Procedural Crystal Heart
+    // 5. Procedural Crystal Heart & Grand Central 3D Crystal Heart Mesh
     heartMeshPoints = createProceduralHeart(scene, new THREE.Vector3(0, 0, -210));
+    centralCrystalHeart = createCentralCrystalHeart(scene, new THREE.Vector3(0, 0, -210));
     
     // Create DOM element tag for the name
     let label = document.getElementById('hero-name-label');
@@ -342,6 +398,7 @@ function initUniverseScene(userName) {
 
     // 10. Cinematic Big Bang Expansion Transition
     createBigBangExplosion(scene, new THREE.Vector3(0, 0, 0));
+    AudioManager.play('sound-shimmer', 0.9); // Play audio cue for expansion
     bloomPass.strength = 5.0; // Ignition flash
     
     const transitionTimeline = gsap.timeline({
@@ -362,6 +419,22 @@ function initUniverseScene(userName) {
             targetScrollProgress = 0;
             
             initScrollHint();
+            
+            // Reveal Hidden UI (Cosmic Oracle and Message Board)
+            const memoryBoard = document.getElementById('memory-board-ui');
+            const cosmicOracle = document.getElementById('cosmic-oracle');
+            const oracleBubble = document.getElementById('oracle-bubble');
+            
+            if (memoryBoard) {
+                memoryBoard.classList.remove('hidden');
+                gsap.fromTo(memoryBoard, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 1.5, ease: "power2.out" });
+            }
+            if (cosmicOracle) {
+                cosmicOracle.classList.remove('hidden');
+                if (oracleBubble) {
+                    gsap.fromTo(oracleBubble, { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 1.5, ease: "power2.out", delay: 0.5 });
+                }
+            }
             
             window.addEventListener('scroll', handlePageScroll);
             animateScrollStory();
@@ -399,7 +472,7 @@ function updateCameraAlongPath(progress) {
     let lookAtPos;
 
     if (progress > 0.9) {
-        lookAtPos = new THREE.Vector3(0, 0, -210); // Look at Crystal Heart
+        lookAtPos = TARGET_HEART_POS; // Reuse constant singleton
     } else {
         lookAtPos = redStringCurve.getPointAt(Math.min(1.0, progress + 0.08));
     }
@@ -425,7 +498,7 @@ function updateConstellationNetwork() {
         if (lineIdx >= maxConstellationLines) break;
 
         const idx = Math.floor(Math.random() * count) * 3;
-        const v1 = new THREE.Vector3(positions[idx], positions[idx + 1], positions[idx + 2]);
+        _tempV1.set(positions[idx], positions[idx + 1], positions[idx + 2]);
 
         for (let j = 0; j < 5; j++) {
             if (lineIdx >= maxConstellationLines) break;
@@ -433,18 +506,18 @@ function updateConstellationNetwork() {
             const idx2 = Math.floor(Math.random() * count) * 3;
             if (idx === idx2) continue;
 
-            const v2 = new THREE.Vector3(positions[idx2], positions[idx2 + 1], positions[idx2 + 2]);
+            _tempV2.set(positions[idx2], positions[idx2 + 1], positions[idx2 + 2]);
 
-            if (v1.distanceTo(v2) < connectDistance) {
+            if (_tempV1.distanceTo(_tempV2) < connectDistance) {
                 const i6 = lineIdx * 6;
                 
                 // Write into our pre-allocated typed buffer directly
-                constellationPositions[i6] = v1.x;
-                constellationPositions[i6 + 1] = v1.y;
-                constellationPositions[i6 + 2] = v1.z;
-                constellationPositions[i6 + 3] = v2.x;
-                constellationPositions[i6 + 4] = v2.y;
-                constellationPositions[i6 + 5] = v2.z;
+                constellationPositions[i6] = _tempV1.x;
+                constellationPositions[i6 + 1] = _tempV1.y;
+                constellationPositions[i6 + 2] = _tempV1.z;
+                constellationPositions[i6 + 3] = _tempV2.x;
+                constellationPositions[i6 + 4] = _tempV2.y;
+                constellationPositions[i6 + 5] = _tempV2.z;
                 
                 lineIdx++;
             }
@@ -475,38 +548,41 @@ window.addEventListener('mousemove', (event) => {
 });
 
 function createHeartTrail(pos) {
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array([pos.x, pos.y, pos.z]);
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    if (trailPool.length === 0) return;
     
-    const particle = new THREE.Points(geometry, heartTrailMaterial.clone());
-    scene.add(particle);
-    heartTrailParticles.push(particle);
+    const particle = trailPool[trailPoolIndex];
+    trailPoolIndex = (trailPoolIndex + 1) % trailPoolSize;
+
+    particle.position.copy(pos);
+    particle.visible = true;
+
+    // Reset GSAP animations on this pooled mesh to avoid conflicts
+    gsap.killTweensOf(particle.position);
+    gsap.killTweensOf(particle.material);
+
+    particle.material.opacity = 0.8;
 
     gsap.to(particle.position, {
         duration: 1.2,
-        y: pos.y + 0.6,
+        y: pos.y + 0.8,
+        ease: "sine.out"
+    });
+
+    gsap.to(particle.material, {
         opacity: 0,
-        onUpdate: () => {
-            if (particle.material) {
-                particle.material.opacity = 0.7 * (1 - (particle.position.y - pos.y) / 0.6);
-            }
-        },
+        duration: 1.2,
+        ease: "sine.inOut",
         onComplete: () => {
-            // Clean resources
-            disposeObject(particle);
-            const index = heartTrailParticles.indexOf(particle);
-            if (index > -1) heartTrailParticles.splice(index, 1);
+            particle.visible = false;
         }
     });
 }
 
 // --- HOLOGRAM CARD BUILDERS ---
 
-function createHolographicCard(pos, emoji, noteIndex, label, customMessage = null) {
-    // 1. Create 3D Heart Mesh
-    const geometry = create3DCrystalHeartGeometry();
-    const material = new THREE.MeshPhysicalMaterial({
+function getSharedCardMaterial() {
+    if (sharedCardMaterial) return sharedCardMaterial;
+    sharedCardMaterial = new THREE.MeshPhysicalMaterial({
         color: 0xff3366,
         emissive: 0x330005,
         roughness: 0.1,
@@ -518,6 +594,13 @@ function createHolographicCard(pos, emoji, noteIndex, label, customMessage = nul
         opacity: 0.9,
         side: THREE.DoubleSide
     });
+    return sharedCardMaterial;
+}
+
+function createHolographicCard(pos, emoji, noteIndex, label, customMessage = null) {
+    // 1. Create 3D Heart Mesh
+    const geometry = create3DCrystalHeartGeometry();
+    const material = getSharedCardMaterial();
 
     const heartMesh = new THREE.Mesh(geometry, material);
     heartMesh.lookAt(camera.position);
@@ -831,3 +914,57 @@ setInterval(() => {
         showOracleMessage(msg);
     }
 }, 16000);
+
+function updateAmbientQuotes() {
+    const now = Date.now();
+    if (now - lastQuoteTime < quoteInterval) return;
+    lastQuoteTime = now;
+
+    const quoteContainer = document.getElementById('quote-container');
+    const quoteText = document.getElementById('quote-text');
+    if (!quoteContainer || !quoteText) return;
+
+    fetch('/api/quotes')
+        .then(res => {
+            if (res.ok) return res.json();
+            throw new Error();
+        })
+        .then(quotes => {
+            if (quotes && quotes.length > 0) {
+                const q = quotes[Math.floor(Math.random() * quotes.length)];
+                
+                // Show container if hidden
+                quoteContainer.classList.remove('hidden');
+                
+                // Fade out old text, replace, and fade in
+                gsap.to(quoteText, {
+                    opacity: 0,
+                    y: -10,
+                    duration: 0.8,
+                    onComplete: () => {
+                        quoteText.innerText = `"${q.content}"`;
+                        gsap.fromTo(quoteText, 
+                            { opacity: 0, y: 10 },
+                            { opacity: 1, y: 0, duration: 1.2, ease: "power2.out" }
+                        );
+                    }
+                });
+            }
+        })
+        .catch(() => {
+            // Fallback quote if API/database link fails
+            quoteContainer.classList.remove('hidden');
+            gsap.to(quoteText, {
+                opacity: 0,
+                y: -10,
+                duration: 0.8,
+                onComplete: () => {
+                    quoteText.innerText = "\"In a universe of chaos, you are my calm.\"";
+                    gsap.fromTo(quoteText, 
+                        { opacity: 0, y: 10 },
+                        { opacity: 1, y: 0, duration: 1.2, ease: "power2.out" }
+                    );
+                }
+            });
+        });
+}

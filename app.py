@@ -4,7 +4,7 @@ from config import Config
 import os
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, template_folder='.')
     app.secret_key = Config.SECRET_KEY
     
     @app.route('/')

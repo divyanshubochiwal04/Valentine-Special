@@ -24,8 +24,20 @@ export function initInteraction(scene, onMemoryStarClicked) {
             gsap.to(cursorEl, {
                 x: e.clientX,
                 y: e.clientY,
+                xPercent: -50,
+                yPercent: -50,
                 duration: 0.1,
                 opacity: 1
+            });
+        }
+        
+        // Move hover tooltip if it exists
+        const tooltip = document.getElementById('hover-tooltip');
+        if (tooltip) {
+            gsap.to(tooltip, {
+                x: e.clientX + 15,
+                y: e.clientY + 15,
+                duration: 0.05
             });
         }
         
@@ -79,28 +91,66 @@ function handleMoveInput(clientX, clientY, scene) {
         
         // Find shooting star hitMeshes in scene
         const hitMeshes = scene.children.filter(child => child.userData && child.userData.type === 'shooting-star');
+        
+        // Find central crystal heart if exists
+        const centralHeart = scene.children.find(child => child.name === 'central-crystal-heart');
+        
         const allTargets = [...memoryStars, ...hitMeshes];
+        if (centralHeart) {
+            allTargets.push(centralHeart);
+        }
+        
         const intersects = InputState.raycaster.intersectObjects(allTargets);
 
         if (intersects.length > 0) {
             cursorEl?.classList.add('clickable');
             
-            const star = intersects[0].object;
-            // Only scale memory cards, not shooting star hit boxes
-            if (star && !star.userData.isHovered && star.userData.type !== 'shooting-star') {
-                star.userData.isHovered = true;
-                gsap.to(star.scale, { x: 1.4, y: 1.4, z: 1.4, duration: 0.3 });
+            const hitObject = intersects[0].object;
+            // Only scale memory cards, not shooting star hit boxes or central heart
+            if (hitObject && !hitObject.userData.isHovered && hitObject.userData.type !== 'shooting-star' && hitObject.name !== 'central-crystal-heart') {
+                hitObject.userData.isHovered = true;
+                gsap.to(hitObject.scale, { x: 1.4, y: 1.4, z: 1.4, duration: 0.3 });
+                
+                // Show tooltip with memory label/author
+                const tooltip = document.getElementById('hover-tooltip');
+                if (tooltip && hitObject.userData.label) {
+                    tooltip.innerText = hitObject.userData.label;
+                    gsap.to(tooltip, { opacity: 1, duration: 0.2 });
+                }
+            } else if (hitObject && hitObject.name === 'central-crystal-heart' && !hitObject.userData.isHovered) {
+                hitObject.userData.isHovered = true;
+                
+                // Show click indicator tooltip for central heart
+                const tooltip = document.getElementById('hover-tooltip');
+                if (tooltip) {
+                    tooltip.innerText = "✨ CLICK ME ✨";
+                    gsap.to(tooltip, { opacity: 1, duration: 0.2 });
+                }
             }
         } else {
             cursorEl?.classList.remove('clickable');
             
             // Restore scale of any previously hovered cards
+            let hoveredObjectFound = false;
             memoryStars.forEach(star => {
                 if (star.userData.isHovered) {
                     star.userData.isHovered = false;
                     gsap.to(star.scale, { x: 1.0, y: 1.0, z: 1.0, duration: 0.3 });
+                    hoveredObjectFound = true;
                 }
             });
+            
+            if (centralHeart && centralHeart.userData.isHovered) {
+                centralHeart.userData.isHovered = false;
+                hoveredObjectFound = true;
+            }
+            
+            if (hoveredObjectFound) {
+                const tooltip = document.getElementById('hover-tooltip');
+                if (tooltip) {
+                    gsap.to(tooltip, { opacity: 0, duration: 0.2 });
+                }
+            }
         }
     }
 }
@@ -140,7 +190,30 @@ function detectIntersections(clientX, clientY, scene, callback) {
         }
     }
 
-    // 2. Fallback to memory stars
+    // 2. Check central crystal heart click
+    const centralHeart = scene.children.find(child => child.name === 'central-crystal-heart');
+    if (centralHeart) {
+        const heartIntersects = InputState.raycaster.intersectObject(centralHeart);
+        if (heartIntersects.length > 0) {
+            import('./particles.js').then(module => {
+                module.createHeartExplosion(scene, centralHeart.position);
+            });
+            import('./audio.js').then(module => {
+                module.AudioManager.play('sound-shimmer', 0.8);
+            });
+            
+            // Pop/scale animation bounce
+            const currentScale = centralHeart.scale.x;
+            gsap.killTweensOf(centralHeart.scale);
+            gsap.fromTo(centralHeart.scale, 
+                { x: currentScale * 1.5, y: currentScale * 1.5, z: currentScale * 1.5 },
+                { x: currentScale, y: currentScale, z: currentScale, duration: 0.8, ease: "elastic.out(1, 0.3)" }
+            );
+            return;
+        }
+    }
+
+    // 3. Fallback to memory stars
     const memoryStars = scene.userData.memoryStars || [];
     const intersects = InputState.raycaster.intersectObjects(memoryStars);
 
